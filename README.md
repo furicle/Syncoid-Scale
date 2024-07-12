@@ -21,7 +21,7 @@ This script makes it easier to break the 'no end user servicable parts inside' s
 You will need an account on the NAS that can su to root.  Typically the first local user you set up will be able to do so.  In the script provided, that user is 'admin'
 If you wish to use a different account, please edit the script to match. 
 
-In that user's home directory, place the following nine files, from the sanoid project, /and/ the enable-syncoid-on-truenas.sh script.
+In that user's home directory, place the following nine files, from the sanoid project, *and* the [enable-syncoid-on-truenas.sh](https://github.com/furicle/Syncoid-Scale/blob/main/enable-syncoid-on-truenas.sh) script.
 
 * [findoid](https://github.com/jimsalterjrs/sanoid/blob/master/findoid)
 * [sanoid](https://github.com/jimsalterjrs/sanoid/blob/master/sanoid)
@@ -46,6 +46,9 @@ By default, the script puts /usr back as a read-only folder, but that does not h
 
 After every TrueNAS update, you should check if sanoid exists and is executable, and re-run this script if it's not present.
 
+## More Info
+
+For more information, and discussions of ZFS or Sanoid, I recommend the [Practical ZFS](https://discourse.practicalzfs.com) discussion site.
 
 ## Future Changes etc...
 
