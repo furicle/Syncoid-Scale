@@ -48,9 +48,9 @@ APT_SOURCES_FILE="sources.list"
 # Check if run with enough privileges
 ISROOT=$(id -u)
 if [ "$ISROOT" -ne 0 ]; then
-    echo "--------------------------------------------------------";
-    echo "Error - insufficient privileges.  Run with sudo or root.";
-    echo "--------------------------------------------------------";
+    echo "-----------------------------------------------------------";
+    echo " Error - insufficient privileges.  Run with sudo or root. ";
+    echo "-----------------------------------------------------------";
     exit 1;
 fi
 
@@ -63,7 +63,7 @@ exec 2>&1
 # Start
 echo
 echo "========================================================";
-echo "              Starting script execution"
+echo "              Starting script execution";
 echo "========================================================";
 
 # Check if all sanoid files available
@@ -150,7 +150,7 @@ done
 echo
 echo "-- Symlinking scripts"
 for ITEM in $SCRIPTS ; do
-    ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${LINKS_DIR}/" ;
+    [[ -L "${LINKS_DIR}/${SANOID_FILES[$ITEM]}" ]] || ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${LINKS_DIR}/" ;
 done
 
 # Create conf dir if required
@@ -162,14 +162,14 @@ mkdir -pv "${CONF_DIR}"
 echo
 echo "-- Copying conf files into place"
 for ITEM in $CONF ; do
-    cp -v "${SANOID_FILES[$ITEM]}" "$CONF_DIR" ;
+    cp -v "${SANOID_FILES_PATH}/${SANOID_FILES[$ITEM]}" "$CONF_DIR" ;
 done
 
 # Copy services and timer into place and activate
 echo
 echo "-- Moving conf files into place"
 for ITEM in $SYSD ; do
-    cp -v "${SANOID_FILES[$ITEM]}" "$SYSD_DIR" ;
+    cp -v "${SANOID_FILES_PATH}/${SANOID_FILES[$ITEM]}" "$SYSD_DIR" ;
 done
 
 # Get systemd to see new files
