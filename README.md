@@ -2,7 +2,7 @@
 Install Syncoid on TrueNAS Scale, or reinstall after an OS update
 
 ## Background
-[TrueNAS Scale](https://www.truenas.com/truenas-scale/) is great NAS operating system, based on [Debian](https://www.debian.org) and incorporating the [ZFS](https://zfsonlinux.org/) file system.  
+[TrueNAS Scale](https://www.truenas.com/truenas-scale/) is great NAS operating system, based on [Debian](https://www.debian.org) and incorporating the [ZFS](https://zfsonlinux.org/) file system.
 
 It has built in software to do replication with other systems, with options for cloud sync, rsync and with zfs replication.
 
@@ -19,7 +19,7 @@ This script makes it easier to break the 'no end user servicable parts inside' s
 ## Requirements and Usage
 
 You will need an account on the NAS that can su to root.  Typically the first local user you set up will be able to do so.  In the script provided, that user is 'admin'
-If you wish to use a different account, please edit the script to match. 
+If you wish to use a different account, please edit the script to match.
 
 In that user's home directory, place the following nine files, from the sanoid project, *and* the [enable-syncoid-on-truenas.sh](https://github.com/furicle/Syncoid-Scale/blob/main/enable-syncoid-on-truenas.sh) script.
 
