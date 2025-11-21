@@ -18,10 +18,14 @@ This script makes it easier to break the 'no end user servicable parts inside' s
 
 ## Requirements and Usage
 
-You will need an account on the NAS that can su to root.  Typically the first local user you set up will be able to do so.  In the script provided, that user is 'admin'
-If you wish to use a different account, please edit the script to match.
+You will need an account on the NAS that can use sudo (or su to root).  
+Typically the first local user you set up will be able to do so.
 
-In that user's home directory, place the following nine files, from the sanoid project, *and* the [enable-syncoid-on-truenas.sh](https://github.com/furicle/Syncoid-Scale/blob/main/enable-syncoid-on-truenas.sh) script.
+Copy [enable-syncoid-on-truenas.sh](https://github.com/furicle/Syncoid-Scale/blob/main/enable-syncoid-on-truenas.sh) script to that users directory, and ssh in or use the web console to log in as that user.
+
+Run ``sudo bash enable-syncoid-on-truenas.sh``
+
+The script will download the latest source code from the sanoid github site, unzip the tarball, and copy the following files into place.
 
 * [findoid](https://github.com/jimsalterjrs/sanoid/blob/master/findoid)
 * [sanoid](https://github.com/jimsalterjrs/sanoid/blob/master/sanoid)
@@ -35,8 +39,6 @@ In that user's home directory, place the following nine files, from the sanoid p
 
 Edit the sanoid.conf file to match _your_ requirements.
 
-Log into your TrueNAS via the web console or ssh, and run `sudo enable-syncoid-on-truenas.sh`
-
 The script should run to the end without error and report `completed successfully`
 Some warnings from apt are normal, but not errors.
 
@@ -45,6 +47,8 @@ If it does not, please review the output and/or the log file at `/var/log/setup-
 By default, the script puts /usr back as a read-only folder, but that does not happen if the run is interupted.  The next system restart will restore the read-only state as well.
 
 After every TrueNAS update, you should check if sanoid exists and is executable, and re-run this script if it's not present.
+
+If you want to avoid the downloading from github, place the unzipped source into the same folder as the enable script, and run the script with ``-i folder_with_code``.  Note if it doesn't find the folder as named, it will download anyway.
 
 ## More Info
 
