@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Set script to exit on error
 set -e
@@ -11,9 +11,14 @@ set -u
 ###################
 # Variable set up #
 ###################
+# If download is used
+LATEST_TARBALL_NAME='sanoid.latest.tar.gzip'
+API_URL='https://api.github.com/repos/jimsalterjrs/sanoid/releases'
 
-# YOU MUST HAVE THESE SANOID SCRIPTS AND CONF FILES IN THIS DIRECTORY
-SANOID_FILES_PATH="/home/admin/Enable-Sanoid"
+# If already downloaded place files here
+# note - keep structure with systemd files in packages/debian/
+SANOID_FILES_PATH="sanoid.latest"
+
 SANOID_FILES=(
 "findoid"
 "sanoid"
@@ -21,17 +26,17 @@ SANOID_FILES=(
 "syncoid"
 "sanoid.conf"
 "sanoid.defaults.conf"
-"sanoid-prune.service"
-"sanoid.service"
-"sanoid.timer"
+"packages/debian/sanoid.sanoid-prune.service"
+"packages/debian/sanoid.service"
+"packages/debian/sanoid.timer"
 )
 
-# IF YOU CHANGE THE FILE LIST CHANGE THESE ARRAYS TO MATCH
+# If you do change the file list, change these arrays to match
 SCRIPTS="0 1 2 3"
 CONF="4 5"
 SYSD="6 7 8"
 
-# THIS SHOULDN'T NEED CHANGING
+# These shouldn't need changing
 SCRIPTS_DIR="/usr/local/bin"
 LINKS_DIR="/usr/local/sbin"
 CONF_DIR="/etc/sanoid"
@@ -41,6 +46,42 @@ DATESTAMP=$(date "+%Y-%m-%d_%s")
 APT_SOURCES_PATH="/etc/apt"
 APT_SOURCES_FILE="sources.list"
 
+
+# Determine if downloading sanoid et al or using existing folder
+while getopts ":i:h" opt; do
+  case $opt in
+    i)
+      SANOID_FILES_PATH="$OPTARG"
+      ;;
+    :)
+      echo "Option -$OPTARG requires the path to a folder with sanoid source files" >&2
+      exit 1
+      ;;
+    h|\?)
+      echo "Usage: $(basename "$0") [-i sanoid_source_folder]"
+      exit 1
+      ;;
+  esac
+done
+
+
+if [[ -d "$SANOID_FILES_PATH" ]]; then
+  echo "Using local source, NOT downloading from github."
+else
+  echo "Downloading source from github."
+  # get url for latest tar ball from git hub
+  LATEST_TARBALL_URL=$(curl -s "$API_URL" | jq -r '.[0].tarball_url')
+
+  # get latest tar ball from git hub
+  curl -Lo "$LATEST_TARBALL_NAME" "$LATEST_TARBALL_URL"
+
+  # get the top dir name inside tarball - its based on git commit id, so unpredictable
+  TOP_DIR_NAME=$(tar -tf $LATEST_TARBALL_NAME --exclude "*/*"  | awk -F/ '{print $1}')
+  tar -xf "$LATEST_TARBALL_NAME"
+  mv -v "$TOP_DIR_NAME" "$SANOID_FILES_PATH"
+fi
+
+
 ################
 # Script start #
 ################
@@ -48,9 +89,9 @@ APT_SOURCES_FILE="sources.list"
 # Check if run with enough privileges
 ISROOT=$(id -u)
 if [ "$ISROOT" -ne 0 ]; then
-    echo "--------------------------------------------------------";
-    echo "Error - insufficient privileges.  Run with sudo or root.";
-    echo "--------------------------------------------------------";
+    echo "-----------------------------------------------------------";
+    echo " Error - insufficient privileges.  Run with sudo or root. ";
+    echo "-----------------------------------------------------------";
     exit 1;
 fi
 
@@ -63,7 +104,7 @@ exec 2>&1
 # Start
 echo
 echo "========================================================";
-echo "              Starting script execution"
+echo "              Starting script execution";
 echo "========================================================";
 
 # Check if all sanoid files available
@@ -150,7 +191,7 @@ done
 echo
 echo "-- Symlinking scripts"
 for ITEM in $SCRIPTS ; do
-    ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${LINKS_DIR}/" ;
+    [[ -L "${LINKS_DIR}/${SANOID_FILES[$ITEM]}" ]] || ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${LINKS_DIR}/" ;
 done
 
 # Create conf dir if required
@@ -162,14 +203,14 @@ mkdir -pv "${CONF_DIR}"
 echo
 echo "-- Copying conf files into place"
 for ITEM in $CONF ; do
-    cp -v "${SANOID_FILES[$ITEM]}" "$CONF_DIR" ;
+    cp -v "${SANOID_FILES_PATH}/${SANOID_FILES[$ITEM]}" "$CONF_DIR" ;
 done
 
 # Copy services and timer into place and activate
 echo
 echo "-- Moving conf files into place"
 for ITEM in $SYSD ; do
-    cp -v "${SANOID_FILES[$ITEM]}" "$SYSD_DIR" ;
+    cp -v "${SANOID_FILES_PATH}/${SANOID_FILES[$ITEM]}" "$SYSD_DIR" ;
 done
 
 # Get systemd to see new files
