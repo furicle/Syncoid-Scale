@@ -39,6 +39,7 @@ SYSD="6 7 8"
 # These shouldn't need changing
 SCRIPTS_DIR="/usr/local/bin"
 LINKS_DIR="/usr/local/sbin"
+MORELINKS_DIR="/usr/sbin"
 CONF_DIR="/etc/sanoid"
 SYSD_DIR="/etc/systemd/system"
 LOGFILE="/var/log/setup-script.log"
@@ -189,9 +190,14 @@ done
 
 # Symlink scripts into usr sbin
 echo
-echo "-- Symlinking scripts"
+echo "-- Symlinking scripts to ${LINKS_DIR}"
 for ITEM in $SCRIPTS ; do
     [[ -L "${LINKS_DIR}/${SANOID_FILES[$ITEM]}" ]] || ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${LINKS_DIR}/" ;
+done
+echo
+echo "-- Symlinking scripts to ${MORELINKS_DIR}"
+for ITEM in $SCRIPTS ; do
+    [[ -L "${MORELINKS_DIR}/${SANOID_FILES[$ITEM]}" ]] || ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${LINKS_DIR}/" ;
 done
 
 # Create conf dir if required
