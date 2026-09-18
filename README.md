@@ -33,9 +33,9 @@ The script will download the latest source code from the sanoid github site, unz
 * [syncoid](https://github.com/jimsalterjrs/sanoid/blob/master/syncoid)
 * [sanoid.conf](https://github.com/jimsalterjrs/sanoid/blob/master/sanoid.conf)
 * [sanoid.defaults.conf](https://github.com/jimsalterjrs/sanoid/blob/master/sanoid.defaults.conf)
-* [sanoid-prune.service](https://github.com/jimsalterjrs/sanoid/blob/master/sanoid-prune.service)
-* [sanoid.service](https://github.com/jimsalterjrs/sanoid/blob/master/sanoid.service)
-* [sanoid.timer](https://github.com/jimsalterjrs/sanoid/blob/master/sanoid.timer)
+* [sanoid-prune.service](https://github.com/jimsalterjrs/sanoid/blob/master/packages/debian/sanoid-prune.service)
+* [sanoid.service](https://github.com/jimsalterjrs/sanoid/blob/master/packages/debian/sanoid.service)
+* [sanoid.timer](https://github.com/jimsalterjrs/sanoid/blob/master/packages/debian/sanoid.timer)
 
 Edit the sanoid.conf file to match _your_ requirements.
 
