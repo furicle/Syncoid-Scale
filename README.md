@@ -18,7 +18,7 @@ This script makes it easier to break the 'no end user servicable parts inside' s
 
 ## Requirements and Usage
 
-You will need an account on the NAS that can use sudo (or su to root).  
+You will need an account on the NAS that can use sudo (or su to root).
 Typically the first local user you set up will be able to do so.
 
 Copy [enable-syncoid-on-truenas.sh](https://github.com/furicle/Syncoid-Scale/blob/main/enable-syncoid-on-truenas.sh) script to that users directory, and ssh in or use the web console to log in as that user.
