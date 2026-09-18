@@ -173,7 +173,6 @@ echo "-- Restoring sources.list";
 echo cp -vf "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}-${DATESTAMP}" "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}"
 
 
-#FIXME include Br46
 # Make sure scripts are executable
 echo
 echo "-- Setting scripts as executable"
@@ -197,7 +196,7 @@ done
 echo
 echo "-- Symlinking scripts to ${MORELINKS_DIR}"
 for ITEM in $SCRIPTS ; do
-    [[ -L "${MORELINKS_DIR}/${SANOID_FILES[$ITEM]}" ]] || ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${LINKS_DIR}/" ;
+    [[ -L "${MORELINKS_DIR}/${SANOID_FILES[$ITEM]}" ]] || ln -vs "${SCRIPTS_DIR}/${SANOID_FILES[$ITEM]}" "${MORELINKS_DIR}/" ;
 done
 
 # Create conf dir if required
@@ -234,6 +233,13 @@ systemctl enable --now sanoid.timer
 echo
 echo "-- Remounting usr as read only"
 mount -o remount,ro "$DATASET";
+
+# Check programs by outputting version information
+echo
+echo "-- Confirming programs installed and on path"
+syncoid --version
+findoid --version
+sanoid --version
 
 # Profit?
 echo
