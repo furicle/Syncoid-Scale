@@ -36,7 +36,26 @@ SCRIPTS="0 1 2 3"
 CONF="4 5"
 SYSD="6 7 8"
 
-# These shouldn't need changing
+# Vars from here down shouldn't need changing
+# iXSystems puts decoy symbolic links in /usr/local/bin
+# We need to temporarily move them out of the way
+APT_PROGRAMS=(
+  "apt"
+  "apt-cache"
+  "apt-cdrom"
+  "apt-config"
+  "apt-extracttemplates"
+  "apt-ftparchive"
+  "apt-get"
+  "apt-key"
+  "apt-mark"
+  "apt-sortpkgs"
+  "dpkg"
+)
+
+APT_DECOY_LINK_NAME="pkg_mgmt_disabled"
+APT_PROGRAMS_TEMP_DIR="/usr/local/bin-disabled"
+
 SCRIPTS_DIR="/usr/local/bin"
 LINKS_DIR="/usr/local/sbin"
 MORELINKS_DIR="/usr/sbin"
@@ -130,11 +149,26 @@ else
 fi
 
 
-# Re-enabling apt utilities
+# Checking if apt not executable and reversing
+# Seems version dependant? (pre Golden Eye)
 echo
-echo "-- Adding executable flag to re-enable apt utilities"
-chmod -c +x /bin/apt*
-chmod -c +x /usr/bin/dpkg
+echo "-- Adding executable flag apt utilities if required"
+if [[ ! -x /bin/apt ]]; then
+  for program in "${APT_PROGRAMS[@]}"; do
+    /usr/bin/chmod -c +x "/bin/${program}"
+  done
+fi
+
+# Checking if apt programs in usr/local/bin are decoy links
+# Seems version dependant?
+echo
+echo "-- Moving decoy symbolic links if required"
+if [[ -L "/usr/local/bin/${APT_PROGRAMS[0]}" && "$(basename "$(readlink "/usr/local/bin/${APT_PROGRAMS[0]}")")" == "$APT_DECOY_LINK_NAME" ]]; then
+  mkdir "$APT_PROGRAMS_TEMP_DIR"
+  for program in "${APT_PROGRAMS[@]}"; do
+    mv -v "/usr/local/bin/${program}" "${APT_PROGRAMS_TEMP_DIR}/"
+  done
+fi
 
 # Update sources list
 # FIXME should check if additions are already in file and not dupicate them
@@ -160,11 +194,11 @@ fi
 # Install prerequisites
 echo
 echo "-- Updating repositories"
-apt-get update
+/bin/apt-get update
 
 echo
 echo "-- Installing prerequisites via apt"
-apt-get install -y libcapture-tiny-perl libconfig-inifiles-perl pv lzop mbuffer
+/bin/apt-get install -y libcapture-tiny-perl libconfig-inifiles-perl pv lzop mbuffer
 
 
 # Restore sources list
@@ -226,13 +260,20 @@ systemctl daemon-reload
 # Enable sanoid timer
 echo
 echo "-- Enabling the sanoid timer"
-systemctl enable --now sanoid.timer
+/usr/bin/systemctl enable --now sanoid.timer
 
+# Put decoy files back and remove temp dir
+echo
+echo "-- Replacing decoy links and removing temp dir"
+if [[ -e "${APT_PROGRAMS_TEMP_DIR}/${APT_PROGRAMS[0]}" || -L "${APT_PROGRAMS_TEMP_DIR}/${APT_PROGRAMS[0]}" ]] ; then
+  mv -v "${APT_PROGRAMS_TEMP_DIR}"/* "/usr/local/bin/"
+  rmdir -v "$APT_PROGRAMS_TEMP_DIR"
+fi
 
 # Put usr back as was
 echo
 echo "-- Remounting usr as read only"
-mount -o remount,ro "$DATASET";
+/usr/bin/mount -o remount,ro "$DATASET";
 
 # Check programs by outputting version information
 echo
