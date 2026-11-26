@@ -66,10 +66,15 @@ DATESTAMP=$(date "+%Y-%m-%d_%s")
 APT_SOURCES_PATH="/etc/apt"
 APT_SOURCES_FILE="sources.list"
 
+CHECKSTRING='production+truenas'
+KERNEL=$(uname -a)
 
 # Determine if downloading sanoid et al or using existing folder
-while getopts ":i:h" opt; do
+while getopts ":i:hf" opt; do
   case $opt in
+    f)
+      KERNEL="$CHECKSTRING"
+      ;;
     i)
       SANOID_FILES_PATH="$OPTARG"
       ;;
@@ -78,28 +83,12 @@ while getopts ":i:h" opt; do
       exit 1
       ;;
     h|\?)
-      echo "Usage: $(basename "$0") [-i sanoid_source_folder]"
+      echo "Usage: $(basename "$0") [-i sanoid_source_folder] [-f]"
       exit 1
       ;;
   esac
 done
 
-
-if [[ -d "$SANOID_FILES_PATH" ]]; then
-  echo "Using local source, NOT downloading from github."
-else
-  echo "Downloading source from github."
-  # get url for latest tar ball from git hub
-  LATEST_TARBALL_URL=$(curl -s "$API_URL" | jq -r '.[0].tarball_url')
-
-  # get latest tar ball from git hub
-  curl -Lo "$LATEST_TARBALL_NAME" "$LATEST_TARBALL_URL"
-
-  # get the top dir name inside tarball - its based on git commit id, so unpredictable
-  TOP_DIR_NAME=$(tar -tf $LATEST_TARBALL_NAME --exclude "*/*"  | awk -F/ '{print $1}')
-  tar -xf "$LATEST_TARBALL_NAME"
-  mv -v "$TOP_DIR_NAME" "$SANOID_FILES_PATH"
-fi
 
 
 ################
@@ -123,11 +112,40 @@ exec 2>&1
 
 # Start
 echo
-echo "========================================================";
-echo "              Starting script execution";
-echo "========================================================";
+echo "===========================================================";
+echo "                Starting script execution";
+echo "===========================================================";
+
+# Test if running on a TrueNAS system
+if [[ ! "$KERNEL" == *"$CHECKSTRING" ]]; then
+    echo "-----------------------------------------------------------";
+    echo " Error - NOT on TrueNAS. Script intended only for TrueNAS! ";
+    echo "         (can override with -f but why would you??)        ";
+    echo "-----------------------------------------------------------";
+    exit 2;
+fi
+
 
 # Check if all sanoid files available
+echo
+echo -n "-- Finding required sanoid files "
+if [[ -d "$SANOID_FILES_PATH" ]]; then
+  echo "Using local source, NOT downloading from github."
+else
+  echo -n "-- Getting required sanoid files "
+  echo "Downloading source from github."
+  # get url for latest tar ball from git hub
+  LATEST_TARBALL_URL=$(curl -s "$API_URL" | jq -r '.[0].tarball_url')
+
+  # get latest tar ball from git hub
+  curl -Lo "$LATEST_TARBALL_NAME" "$LATEST_TARBALL_URL"
+
+  # get the top dir name inside tarball - its based on git commit id, so unpredictable
+  TOP_DIR_NAME=$(tar -tf $LATEST_TARBALL_NAME --exclude "*/*"  | awk -F/ '{print $1}')
+  tar -xf "$LATEST_TARBALL_NAME"
+  mv -v "$TOP_DIR_NAME" "$SANOID_FILES_PATH"
+fi
+
 echo
 echo -n "-- Checking required sanoid files "
 for FILE in "${SANOID_FILES[@]}" ; do
