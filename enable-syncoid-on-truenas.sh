@@ -5,12 +5,10 @@ set -e
 set -o pipefail
 set -u
 
-# FIXME
-# should use -v or --verbose to control terminal output
-
 ###################
 # Variable set up #
 ###################
+
 # If download is used
 LATEST_TARBALL_NAME='sanoid.latest.tar.gzip'
 API_URL='https://api.github.com/repos/jimsalterjrs/sanoid/releases'
@@ -33,6 +31,7 @@ SANOID_FILES=(
 
 # If you do change the file list, change these arrays to match
 SCRIPTS="0 1 2 3"
+VERSIONEDSCRIPTS="0 1 3"
 CONF="4 5"
 SYSD="6 7 8"
 
@@ -66,40 +65,53 @@ DATESTAMP=$(date "+%Y-%m-%d_%s")
 APT_SOURCES_PATH="/etc/apt"
 APT_SOURCES_FILE="sources.list"
 
+CHECKSTRING='production+truenas'
+KERNEL=$(uname -a)
+UPGRADE=0
 
-# Determine if downloading sanoid et al or using existing folder
-while getopts ":i:h" opt; do
+
+###################
+# Functions       #
+###################
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Options:
+  -i DIR   Path to a folder containing sanoid source files
+  -f       Force mode; skip the check it's running on TrueNAS
+  -u       Upgrade mode; skip the installed-scripts check
+  -h       Show this help and exit
+EOF
+}
+
+while getopts ":i:hfu" opt; do
   case $opt in
+    f)
+      KERNEL="$CHECKSTRING"
+      ;;
+    h)
+      usage
+      exit 0
+      ;;
+    u)
+      UPGRADE=1
+      ;;
     i)
       SANOID_FILES_PATH="$OPTARG"
       ;;
     :)
       echo "Option -$OPTARG requires the path to a folder with sanoid source files" >&2
+      usage >&2
       exit 1
       ;;
-    h|\?)
-      echo "Usage: $(basename "$0") [-i sanoid_source_folder]"
+    \?)
+      echo "Error: invalid option -$OPTARG." >&2
+      usage >&2
       exit 1
       ;;
   esac
 done
-
-
-if [[ -d "$SANOID_FILES_PATH" ]]; then
-  echo "Using local source, NOT downloading from github."
-else
-  echo "Downloading source from github."
-  # get url for latest tar ball from git hub
-  LATEST_TARBALL_URL=$(curl -s "$API_URL" | jq -r '.[0].tarball_url')
-
-  # get latest tar ball from git hub
-  curl -Lo "$LATEST_TARBALL_NAME" "$LATEST_TARBALL_URL"
-
-  # get the top dir name inside tarball - its based on git commit id, so unpredictable
-  TOP_DIR_NAME=$(tar -tf $LATEST_TARBALL_NAME --exclude "*/*"  | awk -F/ '{print $1}')
-  tar -xf "$LATEST_TARBALL_NAME"
-  mv -v "$TOP_DIR_NAME" "$SANOID_FILES_PATH"
-fi
 
 
 ################
@@ -123,28 +135,80 @@ exec 2>&1
 
 # Start
 echo
-echo "========================================================";
-echo "              Starting script execution";
-echo "========================================================";
+echo "===========================================================";
+echo "                Starting script execution";
+echo "===========================================================";
+
+# Test if running on a TrueNAS system
+if [[ ! "$KERNEL" == *"$CHECKSTRING"* ]]; then
+    echo "-----------------------------------------------------------";
+    echo " Error - NOT on TrueNAS. Script intended only for TrueNAS! ";
+    echo "         (can override with -f but why would you??)        ";
+    echo "-----------------------------------------------------------";
+    exit 2;
+fi
+
+if [[ $UPGRADE == 1 ]] ; then
+  echo "-- SKIPPING check if scripts installed"
+else
+  # Check to see if sanoid et al already installed and working
+  echo "-- Checking if scripts already installed"
+  (
+    set +e
+    SCRIPTSCOUNT=0
+    INSTALLED=0
+    for ITEM in $VERSIONEDSCRIPTS ; do
+      ((SCRIPTSCOUNT +=1))
+      if "${SANOID_FILES[$ITEM]}" --version 2>/dev/null; then
+        ((INSTALLED +=1));
+      else
+        echo "   ${SANOID_FILES[$ITEM]} not installed" ;
+      fi
+    done
+    if [ $SCRIPTSCOUNT == $INSTALLED ] ; then
+      echo "All scripts installed already.  Exiting.";
+      echo "    (can be overridden with -u to continue anyway.)";
+      exit 3;
+    fi
+  ) || exit 3
+fi
 
 # Check if all sanoid files available
 echo
+echo "-- Finding required sanoid files "
+if [[ -d "$SANOID_FILES_PATH" ]]; then
+  echo "   Using local source, NOT downloading from github."
+else
+  echo "-- Getting required sanoid files "
+  echo "   Downloading source from github."
+  # get url for latest tar ball from git hub
+  LATEST_TARBALL_URL=$(curl -s "$API_URL" | jq -r '.[0].tarball_url')
+
+  # get latest tar ball from git hub
+  curl -Lo "$LATEST_TARBALL_NAME" "$LATEST_TARBALL_URL"
+
+  # get the top dir name inside tarball - its based on git commit id, so unpredictable
+  TOP_DIR_NAME=$(tar -tf $LATEST_TARBALL_NAME --exclude "*/*"  | awk -F/ '{print $1}')
+  tar -xf "$LATEST_TARBALL_NAME"
+  mv -v "$TOP_DIR_NAME" "$SANOID_FILES_PATH"
+fi
+
+echo
 echo -n "-- Checking required sanoid files "
 for FILE in "${SANOID_FILES[@]}" ; do
-    ([ -r "${SANOID_FILES_PATH}/${FILE}" ] && echo -n '.') || (echo "Missing $FILE, exiting" && exit 1)
+    ([ -r "${SANOID_FILES_PATH}/${FILE}" ] && echo -n '.') || (echo; echo "Missing $FILE, exiting" && exit 1)
 done
 echo
 
 
-# Attempt to remount /usr read+write
 echo
 echo "-- Remounting usr as read write"
 DATASET=$(findmnt -fn --output=source --mountpoint /usr)
 if [ -z "$DATASET" ] ; then
-    echo "Error - couldn't determine /usr mount";
+    echo "   Error - couldn't determine /usr mount";
     exit 1;
 else
-    echo "Completed" ;
+    echo "   Completed" ;
     mount -o remount,rw "$DATASET";
 fi
 
@@ -171,13 +235,12 @@ if [[ -L "/usr/local/bin/${APT_PROGRAMS[0]}" && "$(basename "$(readlink "/usr/lo
 fi
 
 # Update sources list
-# FIXME should check if additions are already in file and not dupicate them
 echo
 echo "-- Working on apt sources"
 echo
 CODENAME="$(lsb_release -cs)"
 if [ -z "$CODENAME" ] ; then
-    echo "Error - couldn't determine debian codename";
+    echo "   Error - couldn't determine debian codename";
     exit 1;
 else
     echo "-- Backing up sources.list";
@@ -247,7 +310,7 @@ done
 
 # Copy services and timer into place and activate
 echo
-echo "-- Moving conf files into place"
+echo "-- Moving systemd files into place"
 for ITEM in $SYSD ; do
     cp -v "${SANOID_FILES_PATH}/${SANOID_FILES[$ITEM]}" "$SYSD_DIR" ;
 done
@@ -255,7 +318,7 @@ done
 # Get systemd to see new files
 echo
 echo "-- Getting systemd to find new service files"
-systemctl daemon-reload
+/usr/bin/systemctl daemon-reload
 
 # Enable sanoid timer
 echo
@@ -264,7 +327,7 @@ echo "-- Enabling the sanoid timer"
 
 # Put decoy files back and remove temp dir
 echo
-echo "-- Replacing decoy links and removing temp dir"
+echo "-- Replacing decoy links and removing temp dir if required"
 if [[ -e "${APT_PROGRAMS_TEMP_DIR}/${APT_PROGRAMS[0]}" || -L "${APT_PROGRAMS_TEMP_DIR}/${APT_PROGRAMS[0]}" ]] ; then
   mv -v "${APT_PROGRAMS_TEMP_DIR}"/* "/usr/local/bin/"
   rmdir -v "$APT_PROGRAMS_TEMP_DIR"
