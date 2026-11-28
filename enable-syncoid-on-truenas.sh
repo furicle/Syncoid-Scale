@@ -61,9 +61,8 @@ MORELINKS_DIR="/usr/sbin"
 CONF_DIR="/etc/sanoid"
 SYSD_DIR="/etc/systemd/system"
 LOGFILE="/var/log/setup-script.log"
-DATESTAMP=$(date "+%Y-%m-%d_%s")
-APT_SOURCES_PATH="/etc/apt"
-APT_SOURCES_FILE="sources.list"
+APT_SOURCES_PATH="/etc/apt/sources.list.d/"
+APT_SOURCES_FILE="debian_syncoid.sources"
 
 CHECKSTRING='production+truenas'
 KERNEL=$(uname -a)
@@ -234,22 +233,27 @@ if [[ -L "/usr/local/bin/${APT_PROGRAMS[0]}" && "$(basename "$(readlink "/usr/lo
   done
 fi
 
-# Update sources list
+# Create newer style debian.sources file
 echo
-echo "-- Working on apt sources"
+echo "-- Getting apt release name"
 echo
 CODENAME="$(lsb_release -cs)"
 if [ -z "$CODENAME" ] ; then
     echo "   Error - couldn't determine debian codename";
-    exit 1;
+    exit 4;
 else
-    echo "-- Backing up sources.list";
-    cp -v "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}" "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}-${DATESTAMP}"
-    echo
-    echo "-- Updating sources.list";
+  if [[ -f "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}" ]]; then
+    echo "   Apt sources exists - moving to -prev"
+    mv -v "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}" "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}-prev"
+  fi
+  echo "-- Creating ${APT_SOURCES_FILE}";
     cat << EOF >> "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}"
-deb http://deb.debian.org/debian $CODENAME main
-deb-src http://deb.debian.org/debian $CODENAME main
+
+Types: deb deb-src
+URIs: http://deb.debian.org/debian
+Suites: $CODENAME
+Components: main
+Trusted: yes
 EOF
 fi
 
@@ -264,11 +268,15 @@ echo "-- Installing prerequisites via apt"
 /bin/apt-get install -y libcapture-tiny-perl libconfig-inifiles-perl pv lzop mbuffer
 
 
-# Restore sources list
 echo
-echo "-- Restoring sources.list";
-echo cp -vf "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}-${DATESTAMP}" "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}"
+echo "-- Undoing additions to apt sources";
+# Remove added sources list
+rm -v "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}"
 
+if [[ -f "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}-prev" ]]; then
+  echo "   Replacing previous copy of ${APT_SOURCES_FILE}"
+  mv -v "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}-prev" "${APT_SOURCES_PATH}/${APT_SOURCES_FILE}"
+fi
 
 # Make sure scripts are executable
 echo
